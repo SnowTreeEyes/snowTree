@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // 기존 프로젝트에서 제공하는 테마 컴포넌트 사용
 import { ThemedText } from '@/components/themed-text';
@@ -8,31 +8,69 @@ import { ThemedView } from '@/components/themed-view';
 
 export default function HomeScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ left: 0, top: 0 });
+  const menuButtonRef = useRef<View>(null);
+  const popupWidth = 220;
+  const popupPadding = 8;
+  const screen = useMemo(() => Dimensions.get('window'), []);
+
+  const openMenu = useCallback(() => {
+    if (!menuButtonRef.current) {
+      setMenuVisible(true);
+      return;
+    }
+
+    menuButtonRef.current.measureInWindow((x, y, width, height) => {
+      const left = Math.min(
+        Math.max(popupPadding, x + width - popupWidth - popupPadding),
+        screen.width - popupWidth - popupPadding,
+      );
+      const top = Math.min(y + height + popupPadding, screen.height - popupPadding);
+      setPopupPosition({ left, top });
+      setMenuVisible(true);
+    });
+  }, [popupPadding, popupWidth, screen.height, screen.width]);
+
+  const closeMenu = useCallback(() => setMenuVisible(false), []);
   return (
     <ThemedView style={styles.container}>
       {/* Header with Menu Button */}
       <View style={styles.header}>
         <View style={{ flex: 1 }} />
-        <TouchableOpacity style={styles.menuButton} onPress={() => setMenuVisible(true)}>
+        <TouchableOpacity
+          ref={menuButtonRef}
+          style={styles.menuButton}
+          onPress={openMenu}
+        >
           <MaterialIcons name="menu" size={28} color="#333" />
         </TouchableOpacity>
       </View>
-      <Modal 
-      visible={menuVisible}
-      animationType="slide"
-      onRequestClose={() => setMenuVisible(false)}
+      <Modal
+        visible={menuVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={closeMenu}
       >
-        <ThemedView style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeMenu} />
+          <ThemedView style={[styles.modalContent, popupPosition]}>
             <ThemedView style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>설정</ThemedText>
-                <TouchableOpacity onPress={() => setMenuVisible(false)}>
-              <MaterialIcons name="close" size={28} color="#333" />
+              <TouchableOpacity onPress={closeMenu}>
+                <MaterialIcons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </ThemedView>
+            <ThemedView style={styles.menuItem}>
+              <ThemedText>프로필</ThemedText>
+            </ThemedView>
+            <ThemedView style={styles.menuItem}>
+              <ThemedText>알림</ThemedText>
+            </ThemedView>
+            <ThemedView style={styles.menuItem}>
+              <ThemedText>로그아웃</ThemedText>
+            </ThemedView>
           </ThemedView>
-          
-        </ThemedView>
+        </View>
       </Modal>
 
       {/* Content */}
@@ -220,17 +258,35 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  modalOverlay:{
-
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
   },
   modalContent: {
-
+    position: 'absolute',
+    width: 220,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   modalHeader: {
-    
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
   },
   modalTitle: {
     fontSize: 24,
+  },
+  menuItem: {
+    paddingVertical: 12,
   },
 
 });
